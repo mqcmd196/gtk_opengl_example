@@ -18,4 +18,4 @@ target_link_directories(gtk_gl_window_sample PRIVATE ${GTK3_LIBRARY_DIRS} ${EPOX
 # Testing OpenCV GUI built with OpenCV supported by GTK3+ and OpenGL
 add_executable(opencv_window_sample src/opencv_window_sample.cpp)
 target_include_directories(opencv_window_sample PRIVATE ${OpenCV_INCLUDE_DIRS})
-target_link_libraries(opencv_window_sample ${OpenCV_LIBRARIES})
+target_link_libraries(opencv_window_sample ${OpenCV_LIBRARIES} GL GLU)

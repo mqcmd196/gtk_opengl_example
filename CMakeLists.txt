@@ -15,6 +15,11 @@ target_include_directories(gtk_gl_window_sample PRIVATE ${GTK3_INCLUDE_DIRS} ${E
 target_link_libraries(gtk_gl_window_sample ${GTK3_LIBRARIES} ${EPOXY_LIBRARIES} GL GLU)
 target_link_directories(gtk_gl_window_sample PRIVATE ${GTK3_LIBRARY_DIRS} ${EPOXY_LIBRARY_DIRS})
 
+add_executable(gtk_gl_window_simple src/gtk_gl_window_simple.cpp)
+target_include_directories(gtk_gl_window_simple PRIVATE ${GTK3_INCLUDE_DIRS} ${EPOXY_INCLUDE_DIRS})
+target_link_libraries(gtk_gl_window_simple ${GTK3_LIBRARIES} ${EPOXY_LIBRARIES} GL GLU)
+target_link_directories(gtk_gl_window_simple PRIVATE ${GTK3_LIBRARY_DIRS} ${EPOXY_LIBRARY_DIRS})
+
 # Testing OpenCV GUI built with OpenCV supported by GTK3+ and OpenGL
 add_executable(opencv_window_sample src/opencv_window_sample.cpp)
 target_include_directories(opencv_window_sample PRIVATE ${OpenCV_INCLUDE_DIRS})

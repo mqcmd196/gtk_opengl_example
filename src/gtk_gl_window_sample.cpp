@@ -17,7 +17,7 @@ static GLuint create_shader(const char* source, GLenum type) {
 }
 
 static void on_realize(GtkGLArea *area) {
-    gtk_gl_area_make_current(area);
+gtk_gl_area_make_current(area);
     if (gtk_gl_area_get_error(area) != NULL)
         return;
 
@@ -102,6 +102,8 @@ static gboolean on_render(GtkGLArea *area, GdkGLContext *context) {
 }
 
 int main(int argc, char *argv[]) {
+    std::cout << "EPOXY GL VERSION: " << epoxy_gl_version() << std::endl;
+
     gtk_init(&argc, &argv);
 
     GtkWidget *window = gtk_window_new(GTK_WINDOW_TOPLEVEL);

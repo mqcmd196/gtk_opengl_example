@@ -4,6 +4,10 @@
 #include <functional>
 #include <opencv2/opencv.hpp>
 
+#include <glm/glm.hpp>
+#include <glm/gtc/matrix_transform.hpp>
+#include <glm/gtc/type_ptr.hpp>
+
 class GLWindow {
 public:
     GtkWidget *glarea;
@@ -32,7 +36,7 @@ public:
         gtk_gl_area_make_current(area);
         if (gtk_gl_area_get_error(area) != NULL)
             return FALSE;
-
+        gtk_widget_queue_draw(glarea);
         if (render_callback) {
             render_callback();
         }
@@ -80,6 +84,7 @@ int main(int argc, char *argv[]) {
     GLuint vao, vbo, program, textureID;
 //    load image
     cv::Mat image = cv::imread(SAMPLE_IMAGE_PATH);
+    cv::flip(image, image, 0);
 
     glwindow.setInitCallback([&]() {
         glEnable(GL_DEPTH_TEST);
@@ -88,8 +93,9 @@ int main(int argc, char *argv[]) {
                 "layout (location = 0) in vec3 position;\n"
                 "layout (location = 1) in vec2 texCoord;\n"
                 "out vec2 TexCoord;\n"
+                "uniform mat4 transform;\n"
                 "void main() {\n"
-                "   gl_Position = vec4(position, 1.0);\n"
+                "   gl_Position = transform * vec4(position, 1.0);\n"
                 "   TexCoord = texCoord;\n"
                 "}\n";
         const char *fragment_shader_source =
@@ -143,9 +149,17 @@ int main(int argc, char *argv[]) {
     });
 
     glwindow.setGlCallback([&]() {
+        static float angle = 0.0f;
+        angle += 1.f;
+
+        glm::mat4 trans = glm::mat4(1.0f);
+        trans = glm::rotate(trans, glm::radians(angle), glm::vec3(0.0f, 1.0f, 0.0f)); // Y軸周りに回転
+
         glClearColor(0.0, 0.0, 0.0, 1.0);
         glClear(GL_COLOR_BUFFER_BIT | GL_DEPTH_BUFFER_BIT);
+
         glUseProgram(program);
+        glUniformMatrix4fv(glGetUniformLocation(program, "transform"), 1, GL_FALSE, glm::value_ptr(trans));
         glBindTexture(GL_TEXTURE_2D, textureID);
         glBindVertexArray(vao);
         glDrawArrays(GL_TRIANGLE_STRIP, 0, 4);

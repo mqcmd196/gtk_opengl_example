@@ -4,6 +4,7 @@ project(opencv_gtk_test)
 
 find_package(PkgConfig REQUIRED)
 find_package(OpenCV REQUIRED)
+find_package(glm REQUIRED)
 
 pkg_check_modules(GTK3 REQUIRED gtk+-3.0)
 pkg_search_module(EPOXY REQUIRED epoxy)
@@ -25,7 +26,7 @@ target_link_directories(gtk_gl_window_simple PRIVATE ${GTK3_LIBRARY_DIRS} ${EPOX
 # OpenGL + GTK3 + rotation example in OpenCV
 add_executable(gtk3_opengl_image_rot src/gtk3_opengl_image_rot.cpp)
 target_include_directories(gtk3_opengl_image_rot PRIVATE ${GTK3_INCLUDE_DIRS} ${EPOXY_INCLUDE_DIRS} ${OpenCV_INCLUDE_DIRS})
-target_link_libraries(gtk3_opengl_image_rot ${GTK3_LIBRARIES} ${EPOXY_LIBRARIES} GL GLU ${OpenCV_LIBRARIES})
+target_link_libraries(gtk3_opengl_image_rot ${GTK3_LIBRARIES} ${EPOXY_LIBRARIES} GL GLU ${OpenCV_LIBRARIES} glm::glm)
 
 add_executable(gtk_gl_2 src/gtk_gl_2.cpp)
 target_include_directories(gtk_gl_2 PRIVATE ${GTK3_INCLUDE_DIRS} ${EPOXY_INCLUDE_DIRS} ${OpenCV_INCLUDE_DIRS})

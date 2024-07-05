@@ -1,170 +1,160 @@
 #include <gtk/gtk.h>
 #include <epoxy/gl.h>
-#include <opencv2/opencv.hpp>
 #include <iostream>
-#include <fstream>
-#include <sstream>
+#include <functional>
+#include <opencv2/opencv.hpp>
 
-using namespace cv;
+class GLWindow {
+public:
+    GtkWidget *glarea;
+    GLWindow(GtkWidget* window) {
+        gtk_window_set_title(GTK_WINDOW(window), "GTK3 + OpenGL Example");
+        gtk_window_set_default_size(GTK_WINDOW(window), 800, 600);
+        glarea = gtk_gl_area_new();
+        gtk_container_add(GTK_CONTAINER(window), glarea);
 
-static GLuint texture = 0;
-static GLuint shaderProgram = 0;
-static int win_width = 800;
-static int win_height = 640;
-
-const char *vertexShaderSource = R"(
-    #version 330 core
-    layout(location = 0) in vec2 aPos;
-    layout(location = 1) in vec2 aTexCoord;
-    out vec2 TexCoord;
-    void main() {
-        gl_Position = vec4(aPos, 0.0, 1.0);
-        TexCoord = aTexCoord;
+        g_signal_connect(glarea, "realize", G_CALLBACK(on_realize), this);
+        g_signal_connect(glarea, "render", G_CALLBACK(on_render), this);
+        g_signal_connect(window, "destroy", G_CALLBACK(gtk_main_quit), NULL);
     }
-)";
 
-const char *fragmentShaderSource = R"(
-    #version 330 core
-    out vec4 FragColor;
-    in vec2 TexCoord;
-    uniform sampler2D texture1;
-    void main() {
-        FragColor = texture(texture1, TexCoord);
-    }
-)";
+    void realize(GtkGLArea *area) {
+        gtk_gl_area_make_current(area);
+        if (gtk_gl_area_get_error(area) != NULL)
+            return;
 
-void checkCompileErrors(GLuint shader, std::string type) {
-    GLint success;
-    GLchar infoLog[1024];
-    if (type != "PROGRAM") {
-        glGetShaderiv(shader, GL_COMPILE_STATUS, &success);
-        if (!success) {
-            glGetShaderInfoLog(shader, 1024, NULL, infoLog);
-            std::cerr << "| ERROR::SHADER-COMPILATION-ERROR of type: " << type << "|\n" << infoLog << "\n -- --------------------------------------------------- -- " << std::endl;
-        }
-    } else {
-        glGetProgramiv(shader, GL_LINK_STATUS, &success);
-        if (!success) {
-            glGetProgramInfoLog(shader, 1024, NULL, infoLog);
-            std::cerr << "| ERROR::PROGRAM-LINKING-ERROR of type: " << type << "|\n" << infoLog << "\n -- --------------------------------------------------- -- " << std::endl;
+        if (init_callback) {
+            init_callback();
         }
     }
-}
 
-void compileShaders() {
-    GLuint vertexShader = glCreateShader(GL_VERTEX_SHADER);
-    glShaderSource(vertexShader, 1, &vertexShaderSource, NULL);
-    glCompileShader(vertexShader);
-    checkCompileErrors(vertexShader, "VERTEX");
+    gboolean render(GtkGLArea *area, GdkGLContext *context) {
+        gtk_gl_area_make_current(area);
+        if (gtk_gl_area_get_error(area) != NULL)
+            return FALSE;
 
-    GLuint fragmentShader = glCreateShader(GL_FRAGMENT_SHADER);
-    glShaderSource(fragmentShader, 1, &fragmentShaderSource, NULL);
-    glCompileShader(fragmentShader);
-    checkCompileErrors(fragmentShader, "FRAGMENT");
+        if (render_callback) {
+            render_callback();
+        }
 
-    shaderProgram = glCreateProgram();
-    glAttachShader(shaderProgram, vertexShader);
-    glAttachShader(shaderProgram, fragmentShader);
-    glLinkProgram(shaderProgram);
-    checkCompileErrors(shaderProgram, "PROGRAM");
-
-    glDeleteShader(vertexShader);
-    glDeleteShader(fragmentShader);
-}
-
-// OpenGLの初期設定
-static void realize(GtkGLArea *area, gpointer user_data) {
-    gtk_gl_area_make_current(area);
-    if (gtk_gl_area_get_error(area) != NULL)
-        return;
-
-    compileShaders();
-
-    glGenTextures(1, &texture);
-    glBindTexture(GL_TEXTURE_2D, texture);
-    glTexParameteri(GL_TEXTURE_2D, GL_TEXTURE_MIN_FILTER, GL_LINEAR);
-    glTexParameteri(GL_TEXTURE_2D, GL_TEXTURE_MAG_FILTER, GL_LINEAR);
-}
-
-// 画像のテクスチャを更新
-void load_texture_from_image(const char* filename) {
-    std::cout << "Loading image: " << filename << std::endl;
-    Mat img = imread(filename);
-    if (img.empty()) {
-        std::cerr << "Failed to load image." << std::endl;
-        return;
+        return TRUE;
     }
-    cvtColor(img, img, COLOR_BGR2RGB); // OpenGLのテクスチャはデフォルトでRGBフォーマット
-    glBindTexture(GL_TEXTURE_2D, texture);
-    glTexImage2D(GL_TEXTURE_2D, 0, GL_RGB, img.cols, img.rows, 0, GL_RGB, GL_UNSIGNED_BYTE, img.data);
-}
 
-// 描画コールバック
-static gboolean render(GtkGLArea *area, GdkGLContext *context) {
-    glClearColor(0, 0, 0, 1);
-    glClear(GL_COLOR_BUFFER_BIT);
+    void setGlCallback(std::function<void()> callback) {
+        render_callback = callback;
+    }
 
-    glUseProgram(shaderProgram);
+    void setInitCallback(std::function<void()> callback) {
+        init_callback = callback;
+    }
 
-    GLfloat vertices[] = {
-            // positions    // texture coords
-            -1.0f, -1.0f,  0.0f, 0.0f,
-            1.0f, -1.0f,  1.0f, 0.0f,
-            1.0f,  1.0f,  1.0f, 1.0f,
-            -1.0f,  1.0f,  0.0f, 1.0f
-    };
-    GLuint indices[] = {
-            0, 1, 2,
-            2, 3, 0
-    };
+private:
+    std::function<void()> render_callback;
+    std::function<void()> init_callback;
 
-    GLuint VBO, VAO, EBO;
-    glGenVertexArrays(1, &VAO);
-    glGenBuffers(1, &VBO);
-    glGenBuffers(1, &EBO);
+    static void on_realize(GtkGLArea *area, gpointer user_data) {
+        GLWindow *glwindow = static_cast<GLWindow*>(user_data);
+        glwindow->realize(area);
+    }
 
-    glBindVertexArray(VAO);
+    static gboolean on_render(GtkGLArea *area, GdkGLContext *context, gpointer user_data) {
+        GLWindow *glwindow = static_cast<GLWindow*>(user_data);
+        return glwindow->render(area, context);
+    }
+};
 
-    glBindBuffer(GL_ARRAY_BUFFER, VBO);
-    glBufferData(GL_ARRAY_BUFFER, sizeof(vertices), vertices, GL_STATIC_DRAW);
-
-    glBindBuffer(GL_ELEMENT_ARRAY_BUFFER, EBO);
-    glBufferData(GL_ELEMENT_ARRAY_BUFFER, sizeof(indices), indices, GL_STATIC_DRAW);
-
-    glVertexAttribPointer(0, 2, GL_FLOAT, GL_FALSE, 4 * sizeof(float), (void*)0);
-    glEnableVertexAttribArray(0);
-    glVertexAttribPointer(1, 2, GL_FLOAT, GL_FALSE, 4 * sizeof(float), (void*)(2 * sizeof(float)));
-    glEnableVertexAttribArray(1);
-
-    glBindTexture(GL_TEXTURE_2D, texture);
-    glDrawElements(GL_TRIANGLES, 6, GL_UNSIGNED_INT, 0);
-
-    glBindVertexArray(0);
-
-    return TRUE;
+static GLuint create_shader(const char* source, GLenum type) {
+    GLuint shader = glCreateShader(type);
+    glShaderSource(shader, 1, &source, NULL);
+    glCompileShader(shader);
+    return shader;
 }
 
 int main(int argc, char *argv[]) {
     gtk_init(&argc, &argv);
 
     GtkWidget *window = gtk_window_new(GTK_WINDOW_TOPLEVEL);
-    GtkWidget *gl_area = gtk_gl_area_new();
-    gtk_widget_set_size_request(gl_area, win_width, win_height);
 
-    g_signal_connect(window, "destroy", G_CALLBACK(gtk_main_quit), NULL);
-    g_signal_connect(gl_area, "realize", G_CALLBACK(realize), NULL);
-    g_signal_connect(gl_area, "render", G_CALLBACK(render), NULL);
+    GLWindow glwindow(window);
 
-    gtk_container_add(GTK_CONTAINER(window), gl_area);
-    gtk_widget_show_all(window);
+    GLuint vao, vbo, program, textureID;
+//    load image
+    cv::Mat image = cv::imread(SAMPLE_IMAGE_PATH);
 
-    if (argc > 1) {
-        load_texture_from_image(argv[1]);
-    } else {
-        load_texture_from_image(SAMPLE_IMAGE_PATH);
-    }
+    glwindow.setInitCallback([&]() {
+        glEnable(GL_DEPTH_TEST);
+        const char *vertex_shader_source =
+                "#version 330 core\n"
+                "layout (location = 0) in vec3 position;\n"
+                "layout (location = 1) in vec2 texCoord;\n"
+                "out vec2 TexCoord;\n"
+                "void main() {\n"
+                "   gl_Position = vec4(position, 1.0);\n"
+                "   TexCoord = texCoord;\n"
+                "}\n";
+        const char *fragment_shader_source =
+                "#version 330 core\n"
+                "in vec2 TexCoord;\n"
+                "out vec4 color;\n"
+                "uniform sampler2D ourTexture;\n"
+                "void main() {\n"
+                "   color = texture(ourTexture, TexCoord);\n"
+                "}\n";
+        program = glCreateProgram();
+        GLuint vertex_shader = create_shader(vertex_shader_source, GL_VERTEX_SHADER);
+        GLuint fragment_shader = create_shader(fragment_shader_source, GL_FRAGMENT_SHADER);
+        glAttachShader(program, vertex_shader);
+        glAttachShader(program, fragment_shader);
+        glLinkProgram(program);
+        glUseProgram(program);
+
+        GLfloat vertices[] = {
+                // Positions        // Texture Coords
+                1.0f,  1.0f, 0.0f,  1.0f, 1.0f,   // Top Right
+                1.0f, -1.0f, 0.0f,  1.0f, 0.0f,   // Bottom Right
+                -1.0f,  1.0f, 0.0f,  0.0f, 1.0f,   // Top Left
+                -1.0f, -1.0f, 0.0f,  0.0f, 0.0f    // Bottom Left
+        };
+
+        glGenVertexArrays(1, &vao);
+        glGenBuffers(1, &vbo);
+        glBindVertexArray(vao);
+        glBindBuffer(GL_ARRAY_BUFFER, vbo);
+        glBufferData(GL_ARRAY_BUFFER, sizeof(vertices), vertices, GL_STATIC_DRAW);
+
+        // Position attribute
+        glVertexAttribPointer(0, 3, GL_FLOAT, GL_FALSE, 5 * sizeof(GLfloat), (GLvoid*)0);
+        glEnableVertexAttribArray(0);
+        // Texture Coord attribute
+        glVertexAttribPointer(1, 2, GL_FLOAT, GL_FALSE, 5 * sizeof(GLfloat), (GLvoid*)(3 * sizeof(GLfloat)));
+        glEnableVertexAttribArray(1);
+        glBindVertexArray(0); // Unbind VAO
+
+
+//        Image to texture
+        glGenTextures(1, &textureID);
+        glBindTexture(GL_TEXTURE_2D, textureID);
+        glTexImage2D(GL_TEXTURE_2D, 0, GL_RGB, image.cols, image.rows, 0, GL_BGR, GL_UNSIGNED_BYTE, image.data);
+        glTexParameteri(GL_TEXTURE_2D, GL_TEXTURE_WRAP_S, GL_CLAMP_TO_EDGE);
+        glTexParameteri(GL_TEXTURE_2D, GL_TEXTURE_WRAP_T, GL_CLAMP_TO_EDGE);
+        glTexParameteri(GL_TEXTURE_2D, GL_TEXTURE_MIN_FILTER, GL_LINEAR);
+        glTexParameteri(GL_TEXTURE_2D, GL_TEXTURE_MAG_FILTER, GL_LINEAR);
+        glBindTexture(GL_TEXTURE_2D, 0);
+    });
+
+    glwindow.setGlCallback([&]() {
+        glClearColor(0.0, 0.0, 0.0, 1.0);
+        glClear(GL_COLOR_BUFFER_BIT | GL_DEPTH_BUFFER_BIT);
+        glUseProgram(program);
+        glBindTexture(GL_TEXTURE_2D, textureID);
+        glBindVertexArray(vao);
+        glDrawArrays(GL_TRIANGLE_STRIP, 0, 4);
+        glBindVertexArray(0);
+    });
+
+    gtk_widget_show(window);
+    gtk_widget_show(glwindow.glarea);
 
     gtk_main();
-
     return 0;
 }

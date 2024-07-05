@@ -9,6 +9,8 @@ pkg_check_modules(GTK3 REQUIRED gtk+-3.0)
 pkg_search_module(EPOXY REQUIRED epoxy)
 # pkg_check_modules(GTK4 REQUIRED)
 
+add_definitions(-DSAMPLE_IMAGE_PATH="${CMAKE_CURRENT_SOURCE_DIR}/data/lena.jpg")
+
 # GTK3+ and OpenGL Project
 add_executable(gtk_gl_window_sample src/gtk_gl_window_sample.cpp)
 target_include_directories(gtk_gl_window_sample PRIVATE ${GTK3_INCLUDE_DIRS} ${EPOXY_INCLUDE_DIRS})
@@ -21,7 +23,6 @@ target_link_libraries(gtk_gl_window_simple ${GTK3_LIBRARIES} ${EPOXY_LIBRARIES} 
 target_link_directories(gtk_gl_window_simple PRIVATE ${GTK3_LIBRARY_DIRS} ${EPOXY_LIBRARY_DIRS})
 
 # OpenGL + GTK3 + rotation example in OpenCV
-add_definitions(-DSAMPLE_IMAGE_PATH="${CMAKE_CURRENT_SOURCE_DIR}/data/lena.jpg")
 add_executable(gtk3_opengl_image_rot src/gtk3_opengl_image_rot.cpp)
 target_include_directories(gtk3_opengl_image_rot PRIVATE ${GTK3_INCLUDE_DIRS} ${EPOXY_INCLUDE_DIRS} ${OpenCV_INCLUDE_DIRS})
 target_link_libraries(gtk3_opengl_image_rot ${GTK3_LIBRARIES} ${EPOXY_LIBRARIES} GL GLU ${OpenCV_LIBRARIES})

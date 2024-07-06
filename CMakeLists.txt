@@ -1,6 +1,6 @@
 cmake_minimum_required(VERSION 3.25.1)
 
-project(opencv_gtk_test)
+project(gtk3_opengl_example)
 
 find_package(PkgConfig REQUIRED)
 find_package(OpenCV REQUIRED)

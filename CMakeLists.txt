@@ -1,12 +1,13 @@
 cmake_minimum_required(VERSION 3.25.1)
 
-project(gtk3_opengl_example)
+project(gtk_opengl_example)
 
 find_package(PkgConfig REQUIRED)
 find_package(OpenCV REQUIRED)
 find_package(glm REQUIRED)
 
 pkg_check_modules(GTK3 REQUIRED gtk+-3.0)
+pkg_check_modules(GTK4 REQUIRED IMPORTED_TARGET gtk4)
 pkg_search_module(EPOXY REQUIRED epoxy)
 # pkg_check_modules(GTK4 REQUIRED)
 
@@ -36,3 +37,8 @@ target_link_libraries(gtk_gl_2 ${GTK3_LIBRARIES} ${EPOXY_LIBRARIES} GL GLU ${Ope
 add_executable(opencv_window_sample src/opencv_window_sample.cpp)
 target_include_directories(opencv_window_sample PRIVATE ${OpenCV_INCLUDE_DIRS})
 target_link_libraries(opencv_window_sample ${OpenCV_LIBRARIES} GL GLU)
+
+# GTK4 GUI
+add_executable(gtk4_window_sample src/gtk4_window_sample.cpp)
+target_include_directories(gtk4_window_sample PRIVATE ${GTK4_INCLUDE_DIRS})
+target_link_libraries(gtk4_window_sample ${GTK4_LIBRARIES})
